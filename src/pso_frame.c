@@ -1,7 +1,7 @@
 #include "pso_frame.h"
 
 
-// ³õÊ¼»¯PSOÅäÖÃ
+// åˆå§‹åŒ–PSOé…ç½®
 PSOConfig create_pso_config(int dim, int pop_size, int max_iter,
     double w, double c1, double c2,
     double* lower_bounds, double* upper_bounds, double* velocity_range) {
@@ -18,18 +18,18 @@ PSOConfig create_pso_config(int dim, int pop_size, int max_iter,
     return config;
 }
 
-// ³õÊ¼»¯Á£×Ó
+// åˆå§‹åŒ–ç²’å­
 void initialize_particle(Particle* particle, PSOConfig* config) {
     particle->position = (double*)malloc(config->dim * sizeof(double));
     particle->velocity = (double*)malloc(config->dim * sizeof(double));
     particle->best_position = (double*)malloc(config->dim * sizeof(double));
 
     for (int j = 0; j < config->dim; j++) {
-        // ÔÚÖ¸¶¨·¶Î§ÄÚ³õÊ¼»¯Î»ÖÃ
+        // åœ¨æŒ‡å®šèŒƒå›´å†…åˆå§‹åŒ–ä½ç½®
         double range = config->upper_bounds[j] - config->lower_bounds[j];
         particle->position[j] = config->lower_bounds[j] + ((double)rand() / RAND_MAX) * range;
 
-        // ³õÊ¼»¯ËÙ¶È£¨ËÙ¶È·¶Î§ÎªÎ»ÖÃ·¶Î§µÄ10%£©
+        // åˆå§‹åŒ–é€Ÿåº¦ï¼ˆé€Ÿåº¦èŒƒå›´ä¸ºä½ç½®èŒƒå›´çš„10%ï¼‰
         particle->velocity[j] = range * 0.1 * ((double)rand() / RAND_MAX - 0.5);
 
         particle->best_position[j] = particle->position[j];
@@ -38,7 +38,7 @@ void initialize_particle(Particle* particle, PSOConfig* config) {
     particle->best_fitness = DBL_MAX;
 }
 
-// ³õÊ¼»¯PSO
+// åˆå§‹åŒ–PSO
 PSOState initialize_pso(PSOConfig* config, FitnessFunc fitness_function) {
     srand(time(NULL));
 
@@ -47,15 +47,15 @@ PSOState initialize_pso(PSOConfig* config, FitnessFunc fitness_function) {
     state.global_best_position = (double*)malloc(config->dim * sizeof(double));
     state.global_best_fitness = DBL_MAX;
 
-    // ³õÊ¼»¯ËùÓĞÁ£×Ó
+    // åˆå§‹åŒ–æ‰€æœ‰ç²’å­
     for (int i = 0; i < config->pop_size; i++) {
         initialize_particle(&state.particles[i], config);
 
-        // ¼ÆËã³õÊ¼ÊÊÓ¦¶È
+        // è®¡ç®—åˆå§‹é€‚åº”åº¦
         double fitness = fitness_function(state.particles[i].position, config->dim);
         state.particles[i].best_fitness = fitness;
 
-        // ¸üĞÂÈ«¾Ö×îÓÅ
+        // æ›´æ–°å…¨å±€æœ€ä¼˜
         if (fitness < state.global_best_fitness) {
             state.global_best_fitness = fitness;
             for (int j = 0; j < config->dim; j++) {
@@ -67,32 +67,32 @@ PSOState initialize_pso(PSOConfig* config, FitnessFunc fitness_function) {
     return state;
 }
 
-// ¸üĞÂÁ£×Ó
+// æ›´æ–°ç²’å­
 void update_particle(Particle* particle, PSOConfig* config, double* global_best_position, FitnessFunc fitness_function) {
     for (int j = 0; j < config->dim; j++) {
-        // Éú³É[0,1]Ëæ»úÊı
+        // ç”Ÿæˆ[0,1]éšæœºæ•°
         double r1 = (double)rand() / RAND_MAX;
         double r2 = (double)rand() / RAND_MAX;
 
-        // ËÙ¶È¸üĞÂ¹«Ê½
+        // é€Ÿåº¦æ›´æ–°å…¬å¼
         particle->velocity[j] = config->w * particle->velocity[j]
             + config->c1 * r1 * (particle->best_position[j] - particle->position[j])
             + config->c2 * r2 * (global_best_position[j] - particle->position[j]);
 
-        // Î»ÖÃ¸üĞÂ
+        // ä½ç½®æ›´æ–°
         particle->position[j] += particle->velocity[j];
 
-        // ±ß½ç´¦Àí
+        // è¾¹ç•Œå¤„ç†
         if (particle->position[j] < config->lower_bounds[j])
             particle->position[j] = config->lower_bounds[j];
         if (particle->position[j] > config->upper_bounds[j])
             particle->position[j] = config->upper_bounds[j];
     }
 
-    // ¼ÆËãĞÂÊÊÓ¦¶È
+    // è®¡ç®—æ–°é€‚åº”åº¦
     double current_fitness = fitness_function(particle->position, config->dim);
 
-    // ¸üĞÂ¸öÌå×îÓÅ
+    // æ›´æ–°ä¸ªä½“æœ€ä¼˜
     if (current_fitness < particle->best_fitness) {
         particle->best_fitness = current_fitness;
         for (int j = 0; j < config->dim; j++) {
@@ -101,20 +101,20 @@ void update_particle(Particle* particle, PSOConfig* config, double* global_best_
     }
 }
 
-// Ö´ĞĞPSOÓÅ»¯
+// æ‰§è¡ŒPSOä¼˜åŒ–
 void run_pso(PSOConfig* config, FitnessFunc fitness_function) {
     PSOState state = initialize_pso(config, fitness_function);
 
-    printf("PSOÓÅ»¯¿ªÊ¼\n");
-    printf("²ÎÊı: Î¬¶È=%d, Á£×ÓÊı=%d, µü´ú=%d, w=%.2f, c1=%.2f, c2=%.2f\n",
+    printf("PSOä¼˜åŒ–å¼€å§‹\n");
+    printf("å‚æ•°: ç»´åº¦=%d, ç²’å­æ•°=%d, è¿­ä»£=%d, w=%.2f, c1=%.2f, c2=%.2f\n",
         config->dim, config->pop_size, config->max_iter, config->w, config->c1, config->c2);
 
-    // Ö÷µü´úÑ­»·
+    // ä¸»è¿­ä»£å¾ªç¯
     for (int iter = 0; iter < config->max_iter; iter++) {
         for (int i = 0; i < config->pop_size; i++) {
             update_particle(&state.particles[i], config, state.global_best_position, fitness_function);
 
-            // ¸üĞÂÈ«¾Ö×îÓÅ
+            // æ›´æ–°å…¨å±€æœ€ä¼˜
             if (state.particles[i].best_fitness < state.global_best_fitness) {
                 state.global_best_fitness = state.particles[i].best_fitness;
                 for (int j = 0; j < config->dim; j++) {
@@ -123,23 +123,23 @@ void run_pso(PSOConfig* config, FitnessFunc fitness_function) {
             }
         }
 
-        // Ã¿100´Îµü´úÊä³ö½ø¶È
+        // æ¯100æ¬¡è¿­ä»£è¾“å‡ºè¿›åº¦
         if (iter % 100 == 0) {
-            printf("µü´ú %4d: µ±Ç°×îÓÅÖµ = %.6f\n", iter, state.global_best_fitness);
+            printf("è¿­ä»£ %4d: å½“å‰æœ€ä¼˜å€¼ = %.6f\n", iter, state.global_best_fitness);
         }
     }
 
-    // Êä³ö×îÖÕ½á¹û
-    printf("\n===== ÓÅ»¯Íê³É =====\n");
-    printf("È«¾Ö×îÓÅÖµ: %.10f\n", state.global_best_fitness);
-    printf("×îÓÅ½âÎ»ÖÃ: (");
+    // è¾“å‡ºæœ€ç»ˆç»“æœ
+    printf("\n===== ä¼˜åŒ–å®Œæˆ =====\n");
+    printf("å…¨å±€æœ€ä¼˜å€¼: %.10f\n", state.global_best_fitness);
+    printf("æœ€ä¼˜è§£ä½ç½®: (");
     for (int j = 0; j < config->dim; j++) {
         printf("%.6f", state.global_best_position[j]);
         if (j < config->dim - 1) printf(", ");
     }
     printf(")\n");
 
-    // ÊÍ·ÅÄÚ´æ
+    // é‡Šæ”¾å†…å­˜
     for (int i = 0; i < config->pop_size; i++) {
         free(state.particles[i].position);
         free(state.particles[i].velocity);

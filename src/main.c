@@ -7,7 +7,7 @@
 //
 //#include "spline.h"
 
-// Ê¾ÀıÊÊÓ¦¶Èº¯Êı: Rastriginº¯Êı
+// ç¤ºä¾‹é€‚åº”åº¦å‡½æ•°: Rastriginå‡½æ•°
 double rastrigin(double* x, int dim) {
     double sum = 0.0;
     for (int i = 0; i < dim; i++) {
@@ -16,7 +16,7 @@ double rastrigin(double* x, int dim) {
     return 10 * dim + sum;
 }
 
-// Ê¾ÀıÊÊÓ¦¶Èº¯Êı: Sphereº¯Êı
+// ç¤ºä¾‹é€‚åº”åº¦å‡½æ•°: Sphereå‡½æ•°
 double sphere(double* x, int dim) {
     double sum = 0.0;
     for (int i = 0; i < dim; i++) {
@@ -26,45 +26,45 @@ double sphere(double* x, int dim) {
 }
 
 // BestFitnessSpline
-double fitness_spline() {
+double fitness_spline(double* x, int dim) {
     double fitness = 0.0;
-
+    
     return fitness;
 }
 
 #if 1
 int main() {
-    // ÅäÖÃËÑË÷¿Õ¼ä
+    // é…ç½®æœç´¢ç©ºé—´
     int dim = 2;
-    double lower_bounds[] = { -5.12, -5.12 }; // Rastriginº¯ÊıµÄËÑË÷·¶Î§
+    double lower_bounds[] = { -5.12, -5.12 }; // Rastriginå‡½æ•°çš„æœç´¢èŒƒå›´
     double upper_bounds[] = { 5.12, 5.12 };
     double velocity_range[] = { -100.0, 100.0 };
 
-    // ´´½¨PSOÅäÖÃ
+    // åˆ›å»ºPSOé…ç½®
     PSOConfig config = create_pso_config(
-        dim,            // ÎÊÌâÎ¬¶È
-        30,             // Á£×ÓÊıÁ¿
-        1000,           // ×î´óµü´ú´ÎÊı
-        0.5,            // ¹ßĞÔÈ¨ÖØ w
-        2.0,            // ¸öÌåÑ§Ï°Òò×Ó c1
-        2.0,            // ÈºÌåÑ§Ï°Òò×Ó c2
-        lower_bounds,   // ËÑË÷ÏÂ½ç
-        upper_bounds,   // ËÑË÷ÉÏ½ç
+        dim,            // é—®é¢˜ç»´åº¦
+        30,             // ç²’å­æ•°é‡
+        1000,           // æœ€å¤§è¿­ä»£æ¬¡æ•°
+        0.5,            // æƒ¯æ€§æƒé‡ w
+        2.0,            // ä¸ªä½“å­¦ä¹ å› å­ c1
+        2.0,            // ç¾¤ä½“å­¦ä¹ å› å­ c2
+        lower_bounds,   // æœç´¢ä¸‹ç•Œ
+        upper_bounds,   // æœç´¢ä¸Šç•Œ
         velocity_range
     );
 
-    // ÔËĞĞPSOÓÅ»¯Æ÷
-    //run_pso(&config, rastrigin); // ´«Èërastriginº¯ÊıÖ¸Õë
-    run_pso(&config, sphere); // ¿ÉÌæ»»Îªsphereº¯Êı
+    // è¿è¡ŒPSOä¼˜åŒ–å™¨
+    //run_pso(&config, rastrigin); // ä¼ å…¥rastriginå‡½æ•°æŒ‡é’ˆ
+    run_pso(&config, sphere); // å¯æ›¿æ¢ä¸ºsphereå‡½æ•°
 
     return 0;
 }
 #endif
 
 #if 0
-// ================= Ê¾ÀıÓÃ·¨ =================
+// ================= ç¤ºä¾‹ç”¨æ³• =================
 int main() { // cubic_spline_with....h
-    // ´´½¨Â·¾¶µã (x,y)
+    // åˆ›å»ºè·¯å¾„ç‚¹ (x,y)
     Matrix points = matrix_create(2, 3);
     double point_data[6] = { -300.588989, -21.019232,
                            -350.0, -30.0,
@@ -72,22 +72,22 @@ int main() { // cubic_spline_with....h
     //points.data = point_data;
     memcpy(points.data, point_data, sizeof(*point_data) * 6);
 
-    // ÉèÖÃÖÕµãÇĞÏß·½Ïò
+    // è®¾ç½®ç»ˆç‚¹åˆ‡çº¿æ–¹å‘
     double end_tangent[2] = { -1.0, 0.0 };
 
-    // Éú³É´ø±ß½çÌõ¼şµÄÈı´ÎÑùÌõ
+    // ç”Ÿæˆå¸¦è¾¹ç•Œæ¡ä»¶çš„ä¸‰æ¬¡æ ·æ¡
     Spline sp = clamped_clamped_spline(&points, end_tangent, 0.35);
 
-    // ÔÚ²ÎÊı¿Õ¼ä¾ùÔÈ²ÉÑù
+    // åœ¨å‚æ•°ç©ºé—´å‡åŒ€é‡‡æ ·
     const int num_samples = 10;
     for (int i = 0; i <= num_samples; i++) {
         double t = (double)i / num_samples;
 
-        // ¼ÆËãÎ»ÖÃ
+        // è®¡ç®—ä½ç½®
         double x = spline_eval(&sp, t, 0);
         double y = spline_eval(&sp, t, 0);
 
-        // ¼ÆËãÇúÂÊ
+        // è®¡ç®—æ›²ç‡
         double curvature[2];
         spline_curvature(&sp, t, curvature);
 
@@ -95,7 +95,7 @@ int main() { // cubic_spline_with....h
             t, x, y, curvature[0], curvature[1]);
     }
 
-    // ÇåÀí×ÊÔ´
+    // æ¸…ç†èµ„æº
     free(sp.breaks);
     free(sp.coefs);
     matrix_free(&points);
@@ -105,42 +105,42 @@ int main() { // cubic_spline_with....h
 #endif
 
 #if 0
-// Ö÷º¯Êı - ²âÊÔ´úÂë
+// ä¸»å‡½æ•° - æµ‹è¯•ä»£ç 
 int main() { // spline.h
-    // ²ÎÊıÉèÖÃ
-    int n = 3; // ½ÚµãÊı
-    double u[] = { 0, 0.5, 1 }; // ²ÎÊı½Úµã
-    int dim = 2; // ÏòÁ¿Î¬¶È
+    // å‚æ•°è®¾ç½®
+    int n = 3; // èŠ‚ç‚¹æ•°
+    double u[] = { 0, 0.5, 1 }; // å‚æ•°èŠ‚ç‚¹
+    int dim = 2; // å‘é‡ç»´åº¦
 
-    // ÊäÈëµã£º2Î¬µã (0,0), (0.5,0.5), (1,1)
+    // è¾“å…¥ç‚¹ï¼š2ç»´ç‚¹ (0,0), (0.5,0.5), (1,1)
     double points[] = {
-        0, 0,    // µã1 (x=0, y=0)
-        0.4, 0.8, // µã2 (x=0.5, y=0.5)
-        1, 1      // µã3 (x=1, y=1)
+        0, 0,    // ç‚¹1 (x=0, y=0)
+        0.4, 0.8, // ç‚¹2 (x=0.5, y=0.5)
+        1, 1      // ç‚¹3 (x=1, y=1)
     };
 
-    // ±ß½çÌõ¼ş: 
-    // [2,1] - ×ó¶Ë¶ş½×µ¼Êı, ÓÒ¶ËÒ»½×µ¼Êı
+    // è¾¹ç•Œæ¡ä»¶: 
+    // [2,1] - å·¦ç«¯äºŒé˜¶å¯¼æ•°, å³ç«¯ä¸€é˜¶å¯¼æ•°
     int bctype[] = { 2, 1 };
-    // ±ß½çÖµ: 
-    // ×ó¶Ë¶ş½×µ¼Êı(x=0, y=0), ÓÒ¶ËÒ»½×µ¼Êı(x=1, y=0)
+    // è¾¹ç•Œå€¼: 
+    // å·¦ç«¯äºŒé˜¶å¯¼æ•°(x=0, y=0), å³ç«¯ä¸€é˜¶å¯¼æ•°(x=1, y=0)
     double bcval[] = {
-        0, 0, // ×ó±ß½ç (dim0=x, dim1=y)
-        1, 0  // ÓÒ±ß½ç (x·½ÏòĞ±ÂÊ=1, y·½ÏòĞ±ÂÊ=0)
+        0, 0, // å·¦è¾¹ç•Œ (dim0=x, dim1=y)
+        1, 0  // å³è¾¹ç•Œ (xæ–¹å‘æ–œç‡=1, yæ–¹å‘æ–œç‡=0)
     };
 
-    // ´´½¨ÑùÌõ
+    // åˆ›å»ºæ ·æ¡
     Spline3D* spline = csape_c(n, u, points, dim, bctype, bcval);
 
     if (spline == NULL) {
         return EXIT_FAILURE;
     }
 
-    // ÔÚ[0,1]Çø¼äÄÚ²ÉÑù¼ÆËã
+    // åœ¨[0,1]åŒºé—´å†…é‡‡æ ·è®¡ç®—
     int num_samples = 100;
-    double result[2]; // ´æ´¢¶şÎ¬½á¹û
+    double result[2]; // å­˜å‚¨äºŒç»´ç»“æœ
 
-    printf("²ÎÊıt   x×ø±ê     y×ø±ê\n");
+    printf("å‚æ•°t   xåæ ‡     yåæ ‡\n");
     printf("------------------------\n");
     for (int i = 0; i <= num_samples; i++) {
         double t = i / (double)num_samples;
@@ -148,7 +148,7 @@ int main() { // spline.h
         printf("%.2f   %.6f  %.6f\n", t, result[0], result[1]);
     }
 
-    // ÊÍ·ÅÄÚ´æ
+    // é‡Šæ”¾å†…å­˜
     free_spline(spline);
 
     return EXIT_SUCCESS;

@@ -2,14 +2,14 @@
 
 #define PI (3.14159265358979323846)
 
-// ================= 数据结构定义 =================
+// ================= 鏁版嵁缁撴瀯瀹氫箟 =================
 typedef struct {
     double* data;
     int rows;
     int cols;
 } Matrix;
 
-// ================= 辅助函数 =================
+// ================= 杈呭姪鍑芥暟 =================
 Matrix matrix_create(int rows, int cols);
 
 void matrix_free(Matrix* mat);

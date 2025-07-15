@@ -6,50 +6,50 @@
 #include <time.h>
 #include <float.h>
 
-// º¯ÊıÖ¸ÕëÀàĞÍ¶¨Òå - ÊÊÓ¦¶Èº¯Êı
+// å‡½æ•°æŒ‡é’ˆç±»å‹å®šä¹‰ - é€‚åº”åº¦å‡½æ•°
 typedef double (*FitnessFunc)(double*, int);
 
-// PSOÅäÖÃ½á¹¹Ìå
+// PSOé…ç½®ç»“æ„ä½“
 typedef struct {
-    int dim;           // ÎÊÌâÎ¬¶È
-    int pop_size;      // Á£×ÓÊıÁ¿
-    int max_iter;      // ×î´óµü´ú´ÎÊı
-    double w;          // ¹ßĞÔÈ¨ÖØ
-    double c1;         // ¸öÌåÑ§Ï°Òò×Ó
-    double c2;         // ÈºÌåÑ§Ï°Òò×Ó
-    double* lower_bounds; // ËÑË÷¿Õ¼äÏÂ½ç
-    double* upper_bounds; // ËÑË÷¿Õ¼äÉÏ½ç
-    double* velocity_range; // ËÑË÷ËÙ¶È·¶Î§
+    int dim;           // é—®é¢˜ç»´åº¦
+    int pop_size;      // ç²’å­æ•°é‡
+    int max_iter;      // æœ€å¤§è¿­ä»£æ¬¡æ•°
+    double w;          // æƒ¯æ€§æƒé‡
+    double c1;         // ä¸ªä½“å­¦ä¹ å› å­
+    double c2;         // ç¾¤ä½“å­¦ä¹ å› å­
+    double* lower_bounds; // æœç´¢ç©ºé—´ä¸‹ç•Œ
+    double* upper_bounds; // æœç´¢ç©ºé—´ä¸Šç•Œ
+    double* velocity_range; // æœç´¢é€Ÿåº¦èŒƒå›´
 } PSOConfig;
 
-// Á£×Ó½á¹¹Ìå
+// ç²’å­ç»“æ„ä½“
 typedef struct {
-    double* position;      // µ±Ç°Î»ÖÃ
-    double* velocity;      // µ±Ç°ËÙ¶È
-    double* best_position; // ¸öÌåÀúÊ·×îÓÅÎ»ÖÃ
-    double best_fitness;   // ¸öÌåÀúÊ·×îÓÅÊÊÓ¦¶È
+    double* position;      // å½“å‰ä½ç½®
+    double* velocity;      // å½“å‰é€Ÿåº¦
+    double* best_position; // ä¸ªä½“å†å²æœ€ä¼˜ä½ç½®
+    double best_fitness;   // ä¸ªä½“å†å²æœ€ä¼˜é€‚åº”åº¦
 } Particle;
 
-// PSO×´Ì¬½á¹¹Ìå
+// PSOçŠ¶æ€ç»“æ„ä½“
 typedef struct {
-    Particle* particles;       // Á£×ÓÈº
-    double* global_best_position; // È«¾Ö×îÓÅÎ»ÖÃ
-    double global_best_fitness;   // È«¾Ö×îÓÅÊÊÓ¦¶È
+    Particle* particles;       // ç²’å­ç¾¤
+    double* global_best_position; // å…¨å±€æœ€ä¼˜ä½ç½®
+    double global_best_fitness;   // å…¨å±€æœ€ä¼˜é€‚åº”åº¦
 } PSOState;
 
-// ³õÊ¼»¯PSOÅäÖÃ
+// åˆå§‹åŒ–PSOé…ç½®
 PSOConfig create_pso_config(int dim, int pop_size, int max_iter,
     double w, double c1, double c2,
     double* lower_bounds, double* upper_bounds, double* velocity_range);
 
-// ³õÊ¼»¯Á£×Ó
+// åˆå§‹åŒ–ç²’å­
 void initialize_particle(Particle* particle, PSOConfig* config);
 
-// ³õÊ¼»¯PSO
+// åˆå§‹åŒ–PSO
 PSOState initialize_pso(PSOConfig* config, FitnessFunc fitness_function);
 
-// ¸üĞÂÁ£×Ó
+// æ›´æ–°ç²’å­
 void update_particle(Particle* particle, PSOConfig* config, double* global_best_position, FitnessFunc fitness_function);
 
-// Ö´ĞĞPSOÓÅ»¯
+// æ‰§è¡ŒPSOä¼˜åŒ–
 void run_pso(PSOConfig* config, FitnessFunc fitness_function);
