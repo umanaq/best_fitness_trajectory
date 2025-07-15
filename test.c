@@ -3,6 +3,58 @@
 #include <time.h>
 #include "spline.h"
 #include "pso.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <float.h>
+#include "spline.h"
+#include "pso.h"
+
+// 测试多维样条功能
+void test_nd_spline() {
+    printf("\n===== Testing Multi-dimensional Spline =====\n");
+    
+    // 创建3D点
+    PointND points[4];
+    for (int i = 0; i < 4; i++) {
+        points[i].dim = 3;
+        points[i].coords = (double*)malloc(3 * sizeof(double));
+    }
+    
+    // 设置3D坐标
+    points[0].coords[0] = 0.0;  points[0].coords[1] = 0.0;  points[0].coords[2] = 0.0;
+    points[1].coords[0] = 10.0; points[1].coords[1] = 20.0; points[1].coords[2] = 5.0;
+    points[2].coords[0] = 20.0; points[2].coords[1] = 10.0; points[2].coords[2] = 15.0;
+    points[3].coords[0] = 30.0; points[3].coords[1] = 0.0;  points[3].coords[2] = 0.0;
+    
+    // 设置终点切线
+    PointND end_tangent;
+    end_tangent.dim = 3;
+    end_tangent.coords = (double*)malloc(3 * sizeof(double));
+    end_tangent.coords[0] = 1.0;
+    end_tangent.coords[1] = 0.0;
+    end_tangent.coords[2] = -0.5;
+    
+    // 创建3D样条
+    SplinePP *spline3d = spline_create_nd(points, 4, &end_tangent, 0.35);
+    
+    // 计算并打印样条点
+    printf("3D样条点:\n");
+    for (int i = 0; i <= 10; i++) {
+        double t = i / 10.0;
+        double *point = spline_evaluate(spline3d, t);
+        printf("t=%.1f: (%.2f, %.2f, %.2f)\n", 
+               t, point[0], point[1], point[2]);
+        free(point);
+    }
+    
+    // 清理资源
+    for (int i = 0; i < 4; i++) {
+        free(points[i].coords);
+    }
+    free(end_tangent.coords);
+    spline_free(spline3d);
+}
 
 int main() {
     // 设置随机数种子
