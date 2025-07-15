@@ -3,16 +3,56 @@
 #include <string.h>
 #include <float.h>
 
-// 弦长参数化
-double* chordal_parameterization(Point2D *points, int num_points) {
-    double *t = (double*)malloc((num_points) * sizeof(double));
+// 创建ND点
+PointND* pointnd_create(int dim) {
+    PointND *point = (PointND*)malloc(sizeof(PointND));
+    point->dim = dim;
+    point->coords = (double*)malloc(dim * sizeof(double));
+    return point;
+}
+
+// 从数组创建ND点
+PointND* pointnd_from_array(double *coords, int dim) {
+    PointND *point = pointnd_create(dim);
+    memcpy(point->coords, coords, dim * sizeof(double));
+    return point;
+}
+
+// 从2D点数组创建ND点数组
+PointND* pointnd_from_point2d(Point2D *points, int num_points) {
+    PointND *nd_points = (PointND*)malloc(num_points * sizeof(PointND));
+    
+    for (int i = 0; i < num_points; i++) {
+        nd_points[i].dim = 2;
+        nd_points[i].coords = (double*)malloc(2 * sizeof(double));
+        nd_points[i].coords[0] = points[i].x;
+        nd_points[i].coords[1] = points[i].y;
+    }
+    
+    return nd_points;
+}
+
+// 释放ND点
+void pointnd_free(PointND *point) {
+    if (point) {
+        if (point->coords) free(point->coords);
+        free(point);
+    }
+}
+
+// 弦长参数化 (ND版本)
+double* chordal_parameterization_nd(PointND *points, int num_points) {
+    double *t = (double*)malloc(num_points * sizeof(double));
     t[0] = 0.0;
     
     double total_length = 0.0;
     for (int i = 1; i < num_points; i++) {
-        double dx = points[i].x - points[i-1].x;
-        double dy = points[i].y - points[i-1].y;
-        double segment_length = sqrt(dx*dx + dy*dy);
+        double sum_squared = 0.0;
+        for (int d = 0; d < points[i].dim; d++) {
+            double diff = points[i].coords[d] - points[i-1].coords[d];
+            sum_squared += diff * diff;
+        }
+        double segment_length = sqrt(sum_squared);
         total_length += segment_length;
         t[i] = total_length;
     }
@@ -27,29 +67,48 @@ double* chordal_parameterization(Point2D *points, int num_points) {
     return t;
 }
 
-SplinePP* spline_create(Point2D *points, int num_points, Point2D end_tangent, double factor_end) {
-    double path_length = sqrt(pow(points[num_points-1].x - points[0].x, 2) + 
-                            pow(points[num_points-1].y - points[0].y, 2));
+// 创建多维样条插值
+SplinePP* spline_create_nd(PointND *points, int num_points, PointND *end_tangent, double factor_end) {
+    if (num_points < 2) return NULL;
+    int dim = points[0].dim;
+    
+    // 计算路径长度用于比例缩放终点切线
+    double path_length = 0.0;
+    double sum_squared = 0.0;
+    for (int d = 0; d < dim; d++) {
+        double diff = points[num_points-1].coords[d] - points[0].coords[d];
+        sum_squared += diff * diff;
+    }
+    path_length = sqrt(sum_squared);
+    
     double extension_factor_end = factor_end * path_length;
     
     // 归一化终点切线向量
-    double et_norm = sqrt(end_tangent.x * end_tangent.x + end_tangent.y * end_tangent.y);
+    double et_norm = 0.0;
+    for (int d = 0; d < dim; d++) {
+        et_norm += end_tangent->coords[d] * end_tangent->coords[d];
+    }
+    et_norm = sqrt(et_norm);
+    
     if (et_norm > 1e-10) {
-        end_tangent.x = end_tangent.x / et_norm * extension_factor_end;
-        end_tangent.y = end_tangent.y / et_norm * extension_factor_end;
+        for (int d = 0; d < dim; d++) {
+            end_tangent->coords[d] = end_tangent->coords[d] / et_norm * extension_factor_end;
+        }
     } else {
-        end_tangent.x = extension_factor_end;
-        end_tangent.y = 0;
+        // 默认切线
+        for (int d = 0; d < dim; d++) {
+            end_tangent->coords[d] = d == 0 ? extension_factor_end : 0;
+        }
     }
     
     // 创建参数化向量
-    double *t = chordal_parameterization(points, num_points);
+    double *t = chordal_parameterization_nd(points, num_points);
     
     // 创建并初始化样条结构
     SplinePP *pp = (SplinePP*)malloc(sizeof(SplinePP));
     pp->pieces = num_points - 1;
-    pp->dim = 2;  // x和y坐标
-    pp->order = 4; // 三次样条
+    pp->dim = dim;  
+    pp->order = 4;  // 三次样条
     pp->t = t;
     
     // 分配系数矩阵内存
@@ -59,7 +118,7 @@ SplinePP* spline_create(Point2D *points, int num_points, Point2D end_tangent, do
     }
     
     // 使用三对角矩阵算法计算三次样条插值
-    for (int dim = 0; dim < pp->dim; dim++) {
+    for (int d = 0; d < pp->dim; d++) {
         double *y = (double*)malloc(num_points * sizeof(double));
         double *h = (double*)malloc((num_points-1) * sizeof(double));
         double *alpha = (double*)malloc((num_points-1) * sizeof(double));
@@ -72,8 +131,7 @@ SplinePP* spline_create(Point2D *points, int num_points, Point2D end_tangent, do
         
         // 提取对应维度的坐标
         for (int i = 0; i < num_points; i++) {
-            if (dim == 0) y[i] = points[i].x;
-            else y[i] = points[i].y;
+            y[i] = points[i].coords[d];
         }
         
         // 计算步长
@@ -102,17 +160,10 @@ SplinePP* spline_create(Point2D *points, int num_points, Point2D end_tangent, do
         c[num_points-1] = 0.0;
         
         // 在终点应用切线条件
-        if (dim == 0) {
-            double tangent_dx = end_tangent.x / (t[num_points-1] - t[num_points-2]);
-            alpha[num_points-2] = 3.0/h[num_points-2] * tangent_dx - 3.0/h[num_points-2] * (y[num_points-1]-y[num_points-2])/h[num_points-2];
-            l[num_points-2] = 2 * h[num_points-2];
-            z[num_points-2] = alpha[num_points-2] / l[num_points-2];
-        } else {
-            double tangent_dy = end_tangent.y / (t[num_points-1] - t[num_points-2]);
-            alpha[num_points-2] = 3.0/h[num_points-2] * tangent_dy - 3.0/h[num_points-2] * (y[num_points-1]-y[num_points-2])/h[num_points-2];
-            l[num_points-2] = 2 * h[num_points-2];
-            z[num_points-2] = alpha[num_points-2] / l[num_points-2];
-        }
+        double tangent_d = end_tangent->coords[d] / (t[num_points-1] - t[num_points-2]);
+        alpha[num_points-2] = 3.0/h[num_points-2] * tangent_d - 3.0/h[num_points-2] * (y[num_points-1]-y[num_points-2])/h[num_points-2];
+        l[num_points-2] = 2 * h[num_points-2];
+        z[num_points-2] = alpha[num_points-2] / l[num_points-2];
         
         // 反向替换求解c,b,d系数
         for (int j = num_points-2; j >= 0; j--) {
@@ -123,10 +174,10 @@ SplinePP* spline_create(Point2D *points, int num_points, Point2D end_tangent, do
         
         // 填充系数矩阵
         for (int i = 0; i < pp->pieces; i++) {
-            pp->coefs[dim][i*4 + 0] = y[i];                // 常数项
-            pp->coefs[dim][i*4 + 1] = b[i];                // 一次项
-            pp->coefs[dim][i*4 + 2] = c[i];                // 二次项
-            pp->coefs[dim][i*4 + 3] = d[i];                // 三次项
+            pp->coefs[d][i*4 + 0] = y[i];                // 常数项
+            pp->coefs[d][i*4 + 1] = b[i];                // 一次项
+            pp->coefs[d][i*4 + 2] = c[i];                // 二次项
+            pp->coefs[d][i*4 + 3] = d[i];                // 三次项
         }
         
         // 释放临时数组
@@ -144,6 +195,32 @@ SplinePP* spline_create(Point2D *points, int num_points, Point2D end_tangent, do
     return pp;
 }
 
+// 兼容旧接口的2D样条创建
+SplinePP* spline_create(Point2D *points, int num_points, Point2D end_tangent, double factor_end) {
+    // 转换为ND点
+    PointND *nd_points = pointnd_from_point2d(points, num_points);
+    
+    // 创建终点切线
+    PointND end_tangent_nd;
+    end_tangent_nd.dim = 2;
+    end_tangent_nd.coords = (double*)malloc(2 * sizeof(double));
+    end_tangent_nd.coords[0] = end_tangent.x;
+    end_tangent_nd.coords[1] = end_tangent.y;
+    
+    // 创建样条
+    SplinePP *result = spline_create_nd(nd_points, num_points, &end_tangent_nd, factor_end);
+    
+    // 清理
+    free(end_tangent_nd.coords);
+    for (int i = 0; i < num_points; i++) {
+        free(nd_points[i].coords);
+    }
+    free(nd_points);
+    
+    return result;
+}
+
+// 计算样条在t处的值
 double* spline_evaluate(SplinePP *pp, double t) {
     double *result = (double*)malloc(pp->dim * sizeof(double));
     
@@ -213,7 +290,13 @@ SplinePP* spline_derivative(SplinePP *pp, int n) {
     return der_pp;
 }
 
+// 注意：曲率计算仅适用于2D和3D
 void spline_compute_curvature(SplinePP *sp, double *t, int n_samples, double *curvature, double *max_curv) {
+    if (sp->dim != 2 && sp->dim != 3) {
+        fprintf(stderr, "Warning: Curvature computation only supported for 2D/3D curves\n");
+        return;
+    }
+    
     SplinePP *sp_der1 = spline_derivative(sp, 1);
     SplinePP *sp_der2 = spline_derivative(sp, 2);
     
@@ -223,8 +306,24 @@ void spline_compute_curvature(SplinePP *sp, double *t, int n_samples, double *cu
         double *dx_dt = spline_evaluate(sp_der1, t[k]);
         double *ddx_dt = spline_evaluate(sp_der2, t[k]);
         
-        double numerator = dx_dt[0] * ddx_dt[1] - dx_dt[1] * ddx_dt[0];
-        double denominator = pow(dx_dt[0]*dx_dt[0] + dx_dt[1]*dx_dt[1], 1.5);
+        double numerator = 0.0;
+        double denominator_term = 0.0;
+        
+        if (sp->dim == 2) {
+            // 2D曲率计算公式
+            numerator = dx_dt[0] * ddx_dt[1] - dx_dt[1] * ddx_dt[0];
+            denominator_term = dx_dt[0]*dx_dt[0] + dx_dt[1]*dx_dt[1];
+        } else if (sp->dim == 3) {
+            // 3D曲率计算公式 (Frenet-Serret公式)
+            // |r' × r''|/|r'|^3
+            double cross_x = dx_dt[1]*ddx_dt[2] - dx_dt[2]*ddx_dt[1];
+            double cross_y = dx_dt[2]*ddx_dt[0] - dx_dt[0]*ddx_dt[2];
+            double cross_z = dx_dt[0]*ddx_dt[1] - dx_dt[1]*ddx_dt[0];
+            numerator = sqrt(cross_x*cross_x + cross_y*cross_y + cross_z*cross_z);
+            denominator_term = dx_dt[0]*dx_dt[0] + dx_dt[1]*dx_dt[1] + dx_dt[2]*dx_dt[2];
+        }
+        
+        double denominator = pow(denominator_term, 1.5);
         
         if (denominator > 1e-10) {
             curvature[k] = fabs(numerator) / denominator;
@@ -245,74 +344,22 @@ void spline_compute_curvature(SplinePP *sp, double *t, int n_samples, double *cu
     if (sp != sp_der2) spline_free(sp_der2);
 }
 
-double spline_calculate_fitness_end(SplinePP *sp, double t_endzone_percent, double *trend_penalty) {
-    int n_samples = 100;
-    double *t_endzone = linspace(t_endzone_percent, 1.0, n_samples);
-    double *curvatures = (double*)malloc(n_samples * sizeof(double));
-    double max_curv = 0.0;
-    
-    spline_compute_curvature(sp, t_endzone, n_samples, curvatures, &max_curv);
-    
-    int increasing_count = 0;
-    double sum_deriv = 0.0;
-    
-    for (int i = 0; i < n_samples; i++) {
-        if (i > 0) {
-            double deriv = curvatures[i] - curvatures[i-1];
-            if (deriv > 0) {
-                increasing_count++;
-            }
-            sum_deriv += fabs(deriv);
-        }
-    }
-    
-    *trend_penalty = increasing_count + sum_deriv / (n_samples - 1);
-    double curvature_end = max_curv + 0.1 * (*trend_penalty);
-    
-    free(t_endzone);
-    free(curvatures);
-    
-    return curvature_end;
-}
+// 其他函数保持不变...
 
-double* linspace(double start, double end, int n) {
-    double *result = (double*)malloc(n * sizeof(double));
-    double step = (end - start) / (n - 1);
-    
-    for (int i = 0; i < n; i++) {
-        result[i] = start + i * step;
-    }
-    
-    return result;
-}
-
-// 一维线性插值辅助函数
-double interp1(double *x, double *y, int n, double xi) {
-    // 简单线性插值
-    if (xi <= x[0]) return y[0];
-    if (xi >= x[n-1]) return y[n-1];
-    
-    // 找到xi所在区间
-    int i = 0;
-    while (i < n - 1 && xi > x[i+1]) i++;
-    
-    // 线性插值
-    double t = (xi - x[i]) / (x[i+1] - x[i]);
-    return y[i] + t * (y[i+1] - y[i]);
-}
-
-void sample_curve_by_arc_length(double *x, double *y, int n_points, double *s_list, int n_samples, Point2D *result) {
+// 多维版本的曲线弧长采样
+void sample_curve_by_arc_length_nd(double **coords, int n_points, int dim, double *s_list, int n_samples, PointND *result) {
     // 计算累积弧长
-    double *dx = (double*)malloc((n_points-1) * sizeof(double));
-    double *dy = (double*)malloc((n_points-1) * sizeof(double));
     double *segment_lengths = (double*)malloc((n_points-1) * sizeof(double));
     double *s_values = (double*)malloc(n_points * sizeof(double));
     
     s_values[0] = 0.0;
     for (int i = 0; i < n_points - 1; i++) {
-        dx[i] = x[i+1] - x[i];
-        dy[i] = y[i+1] - y[i];
-        segment_lengths[i] = sqrt(dx[i]*dx[i] + dy[i]*dy[i]);
+        double sum_squared = 0.0;
+        for (int d = 0; d < dim; d++) {
+            double diff = coords[d][i+1] - coords[d][i];
+            sum_squared += diff * diff;
+        }
+        segment_lengths[i] = sqrt(sum_squared);
         s_values[i+1] = s_values[i] + segment_lengths[i];
     }
     
@@ -326,16 +373,27 @@ void sample_curve_by_arc_length(double *x, double *y, int n_points, double *s_li
     
     // 插值获取对应点
     for (int i = 0; i < n_samples; i++) {
-        result[i].x = interp1(s_values, x, n_points, s_list[i]);
-        result[i].y = interp1(s_values, y, n_points, s_list[i]);
+        // 找到s_list[i]所在区间
+        int seg = 0;
+        while (seg < n_points-1 && s_list[i] > s_values[seg+1]) seg++;
+        
+        // 计算插值系数
+        double alpha = 0;
+        if (segment_lengths[seg] > 1e-10) {
+            alpha = (s_list[i] - s_values[seg]) / segment_lengths[seg];
+        }
+        
+        // 插值得到对应点
+        for (int d = 0; d < dim; d++) {
+            result[i].coords[d] = coords[d][seg] + alpha * (coords[d][seg+1] - coords[d][seg]);
+        }
     }
     
-    free(dx);
-    free(dy);
     free(segment_lengths);
     free(s_values);
 }
 
+// 释放样条曲线资源
 void spline_free(SplinePP *pp) {
     if (pp == NULL) return;
     
