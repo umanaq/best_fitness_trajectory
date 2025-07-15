@@ -79,6 +79,12 @@ void update_particle(Particle* particle, PSOConfig* config, double* global_best_
             + config->c1 * r1 * (particle->best_position[j] - particle->position[j])
             + config->c2 * r2 * (global_best_position[j] - particle->position[j]);
 
+        // 速度限制
+        if (particle->velocity[j] < config->velocity_range[0])
+            particle->velocity[j] = config->velocity_range[0];
+        if (particle->velocity[j] > config->velocity_range[1])
+            particle->velocity[j] = config->velocity_range[1];
+
         // 位置更新
         particle->position[j] += particle->velocity[j];
 
