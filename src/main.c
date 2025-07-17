@@ -3,9 +3,8 @@
 
 #include "pso_frame.h"
 //#include "cubic_spline_with_curvature_constraint.h"
-#include "basic_support.h"
-//
-//#include "spline.h"
+
+#include "fitness.h"
 
 // 示例适应度函数: Rastrigin函数
 double rastrigin(double* x, int dim) {
@@ -28,12 +27,72 @@ double sphere(double* x, int dim) {
 // BestFitnessSpline
 double fitness_spline(double* x, int dim) {
     double fitness = 0.0;
+    if (dim != 2) {
+        fprintf(stderr, "At least 2 DIM required\n");
+        return DBL_MAX;
+    }
+
+    Point lucky_pos = { x[0], x[1] };
+
+    Point start_pos = { -300.588989, -21.019232 };
+    Point via_pos = { -453.451843, -49.921623 };
+    Point dest_pos = { -989.307068, -360.078033 };
+    Point points[3] = { start_pos, lucky_pos, via_pos };
+
+
+    double desired_dir = atan2(dest_pos.y - via_pos.y, dest_pos.x - via_pos.x);
+
+    double factor_end = 0.35;
+    double Kmax = 0.015;
+    double t_endzone_percent = 0.5;
     
+    double gamma = 1;               // 曲率约束惩罚系数
+    double beta = 1;                // 碰撞惩罚系数
+    double alpha = 1e6;             // 曲率基础惩罚系数
+    double tan2 = 1e4;              // 末端点斜率惩罚系数
+    double trend_factor = 1e8;      // 曲率趋势惩罚系数
+    double path_weight = 1e0;       // 路径长度权重
+
+    fitness = calculate_fitness(points, 3, NULL, 0, 0.0,
+        desired_dir, factor_end, Kmax, t_endzone_percent,
+        alpha, gamma, tan2, trend_factor, path_weight, beta);
+
     return fitness;
 }
 
+
+#if 0
+int main() {
+    // 创建2D样条曲线
+    double u[] = {0, 1, 2, 3};
+    double points[] = {0,0, 1,1, 2,0, 3,-1}; // 4个2D点
+    int bctype[] = {2, 2}; // 两端二阶导数为0（自然样条）
+    double bcval[] = {0, 0}; // 边界导数值
+
+    Spline* spline = csape_c(4, u, points, 2, bctype, bcval);
+
+    // 单点取值
+    Point p = spline_ppval(spline, 1.5);
+    printf("Position at t=1.5: (%.2f, %.2f)\n", p.x, p.y);
+
+    // 计算导数
+    Point deriv = spline_deriv(spline, 1.5);
+    printf("Derivative at t=1.5: (%.2f, %.2f)\n", deriv.x, deriv.y);
+
+    // 批量取值
+    double t_vals[] = {0.5, 1.0, 1.5, 2.0};
+    double results[8]; // 4个点×2维
+    spline_eval(spline, t_vals, 4, results);
+
+    // 释放资源
+    free_spline(spline);
+    return 0;
+}
+#endif
+
 #if 1
 int main() {
+#if 0
     // 配置搜索空间
     int dim = 2;
     double lower_bounds[] = { -5.12, -5.12 }; // Rastrigin函数的搜索范围
@@ -54,8 +113,43 @@ int main() {
     );
 
     // 运行PSO优化器
-    //run_pso(&config, rastrigin); // 传入rastrigin函数指针
-    run_pso(&config, sphere); // 可替换为sphere函数
+    // run_pso(&config, rastrigin);  // 传入rastrigin函数指针
+    run_pso(&config, sphere);  // 可替换为sphere函数
+
+#else
+// 配置搜索空间
+    int dim = 2;
+    // todo 优化可行域
+    double init_min[] = { -453.451843, -49.921623 };
+    double init_max[] = { -300.588989, -21.019232 };
+    double search_min[] = { -1000, -1000 };
+    double search_max[] = { 1000, 1000 };
+    double velocity_limit = 100.0;
+
+    // 创建PSO配置
+    PSOConfig config = create_pso_config(
+        dim,                // 问题维度
+        100,                // 粒子数量
+        200,                // 最大迭代次数
+        0.7,                // 惯性权重 w
+        0.5,                // 个体学习因子 c1
+        0.5,                // 群体学习因子 c2
+        init_min,           // 初始位置下界
+        init_max,           // 初始位置上界
+        search_min,         // 搜索下界
+        search_max,         // 搜索上界
+        velocity_limit      // 速度限制
+        );
+
+    // 运行PSO优化器
+    run_pso(&config, fitness_spline);
+
+
+    // matlab优化结果 13187.21 
+    double pbest[] = { -406.0671, -26.4349 };
+    double fitness_test = fitness_spline(pbest, 2);
+    printf("代入matlab优化结果, 适应度值为 %.8f\n", fitness_test);
+#endif
 
     return 0;
 }
@@ -130,7 +224,7 @@ int main() { // spline.h
     };
 
     // 创建样条
-    Spline3D* spline = csape_c(n, u, points, dim, bctype, bcval);
+    Spline* spline = csape_c(n, u, points, dim, bctype, bcval);
 
     if (spline == NULL) {
         return EXIT_FAILURE;
@@ -138,14 +232,14 @@ int main() { // spline.h
 
     // 在[0,1]区间内采样计算
     int num_samples = 100;
-    double result[2]; // 存储二维结果
+    Point result;  // 存储二维结果
 
     printf("参数t   x坐标     y坐标\n");
     printf("------------------------\n");
     for (int i = 0; i <= num_samples; i++) {
-        double t = i / (double)num_samples;
-        spline_eval(spline, t, result);
-        printf("%.2f   %.6f  %.6f\n", t, result[0], result[1]);
+        double t = (1.0 * i) / (1.0 * num_samples);
+        result = spline_ppval(spline, t);
+        printf("%.2f   %.6f  %.6f\n", t, result.x, result.y);
     }
 
     // 释放内存

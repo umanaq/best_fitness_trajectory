@@ -1,20 +1,22 @@
 #include "pso_frame.h"
-
+#include "basic_support.h"
 
 // 初始化PSO配置
 PSOConfig create_pso_config(int dim, int pop_size, int max_iter,
-    double w, double c1, double c2,
-    double* lower_bounds, double* upper_bounds, double* velocity_range) {
-    PSOConfig config = {};
+    double w, double c1, double c2, double* init_min, double* init_max,
+    double* search_min, double* search_max, double velocity_limit) {
+    PSOConfig config = { 0 };
     config.dim = dim;
     config.pop_size = pop_size;
     config.max_iter = max_iter;
     config.w = w;
     config.c1 = c1;
     config.c2 = c2;
-    config.lower_bounds = lower_bounds;
-    config.upper_bounds = upper_bounds;
-    config.velocity_range = velocity_range;
+    config.init_min = init_min;
+    config.init_max = init_max;
+    config.search_min = search_min;
+    config.search_max = search_max;
+    config.velocity_limit = velocity_limit;
     return config;
 }
 
@@ -26,11 +28,10 @@ void initialize_particle(Particle* particle, PSOConfig* config) {
 
     for (int j = 0; j < config->dim; j++) {
         // 在指定范围内初始化位置
-        double range = config->upper_bounds[j] - config->lower_bounds[j];
-        particle->position[j] = config->lower_bounds[j] + ((double)rand() / RAND_MAX) * range;
+        particle->position[j] = random_in_range(config->init_min[j], config->init_max[j]);
 
-        // 初始化速度（速度范围为位置范围的10%）
-        particle->velocity[j] = range * 0.1 * ((double)rand() / RAND_MAX - 0.5);
+        // 初始化速度
+        particle->velocity[j] = random_in_range(-config->velocity_limit, config->velocity_limit);
 
         particle->best_position[j] = particle->position[j];
     }
@@ -68,7 +69,8 @@ PSOState initialize_pso(PSOConfig* config, FitnessFunc fitness_function) {
 }
 
 // 更新粒子
-void update_particle(Particle* particle, PSOConfig* config, double* global_best_position, FitnessFunc fitness_function) {
+void update_particle(Particle* particle, PSOConfig* config, double* global_best_position,
+    FitnessFunc fitness_function) {
     for (int j = 0; j < config->dim; j++) {
         // 生成[0,1]随机数
         double r1 = (double)rand() / RAND_MAX;
@@ -78,15 +80,23 @@ void update_particle(Particle* particle, PSOConfig* config, double* global_best_
         particle->velocity[j] = config->w * particle->velocity[j]
             + config->c1 * r1 * (particle->best_position[j] - particle->position[j])
             + config->c2 * r2 * (global_best_position[j] - particle->position[j]);
+    
+        if (particle->velocity[j] + config->velocity_limit < 0)
+            particle->velocity[j] = - config->velocity_limit;
+        else if (particle->velocity[j] > config->velocity_limit)
+            particle->velocity[j] = config->velocity_limit;
 
         // 位置更新
         particle->position[j] += particle->velocity[j];
 
         // 边界处理
-        if (particle->position[j] < config->lower_bounds[j])
-            particle->position[j] = config->lower_bounds[j];
-        if (particle->position[j] > config->upper_bounds[j])
-            particle->position[j] = config->upper_bounds[j];
+        if (particle->position[j] < config->search_min[j]) {
+            particle->position[j] = config->search_min[j];
+            // particle->velocity[j] *= -0.5;  // 反弹
+        } else if (particle->position[j] > config->search_max[j]) {
+            particle->position[j] = config->search_max[j];
+            // particle->velocity[j] *= -0.5;  // 反弹
+        }
     }
 
     // 计算新适应度
