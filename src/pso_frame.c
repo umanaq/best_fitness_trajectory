@@ -80,17 +80,12 @@ void update_particle(Particle* particle, PSOConfig* config, double* global_best_
         particle->velocity[j] = config->w * particle->velocity[j]
             + config->c1 * r1 * (particle->best_position[j] - particle->position[j])
             + config->c2 * r2 * (global_best_position[j] - particle->position[j]);
-    
+        
+        // 速度限制
         if (particle->velocity[j] + config->velocity_limit < 0)
             particle->velocity[j] = - config->velocity_limit;
         else if (particle->velocity[j] > config->velocity_limit)
             particle->velocity[j] = config->velocity_limit;
-
-        // 速度限制
-        if (particle->velocity[j] < config->velocity_range[0])
-            particle->velocity[j] = config->velocity_range[0];
-        if (particle->velocity[j] > config->velocity_range[1])
-            particle->velocity[j] = config->velocity_range[1];
 
         // 位置更新
         particle->position[j] += particle->velocity[j];
@@ -98,10 +93,10 @@ void update_particle(Particle* particle, PSOConfig* config, double* global_best_
         // 边界处理
         if (particle->position[j] < config->search_min[j]) {
             particle->position[j] = config->search_min[j];
-            // particle->velocity[j] *= -0.5;  // 反弹
+            particle->velocity[j] *= -0.5;  // 反弹
         } else if (particle->position[j] > config->search_max[j]) {
             particle->position[j] = config->search_max[j];
-            // particle->velocity[j] *= -0.5;  // 反弹
+            particle->velocity[j] *= -0.5;  // 反弹
         }
     }
 
